@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Calculadora</title>
+
+  <style>
+    /* Remove espaçamentos padrão do navegador */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    /* Centraliza a calculadora na tela */
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      background: #e0e5ec; /* cor de fundo cinza clarinho */
+      font-family: Arial, sans-serif;
+    }
+
+    /* Caixa principal da calculadora */
+    .calculadora {
+      background: #e0e5ec;
+      border-radius: 20px;
+      padding: 25px;
+      width: 300px;
+      /* sombra dupla = efeito neumorphism */
+      box-shadow: 8px 8px 15px #a3b1c6, -8px -8px 15px #ffffff;
+    }
+
+    /* Tela onde aparece os números */
+    .tela {
+      background: #e0e5ec;
+      border-radius: 12px;
+      padding: 15px;
+      margin-bottom: 20px;
+      text-align: right;
+      min-height: 80px;
+      /* sombra interna = parece afundado */
+      box-shadow: inset 5px 5px 10px #a3b1c6, inset -5px -5px 10px #ffffff;
+    }
+
+    /* Texto pequeno que mostra a conta */
+    .tela .conta {
+      font-size: 13px;
+      color: #8a9bb0;
+      min-height: 16px;
+    }
+
+    /* Número principal grande */
+    .tela .numero {
+      font-size: 34px;
+      font-weight: bold;
+      color: #4a5568;
+    }
+
+    /* Grade dos botões: 4 colunas */
+    .botoes {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+    }
+
+    /* Estilo base de todos os botões */
+    .btn {
+      background: #e0e5ec;
+      border: none;
+      border-radius: 10px;
+      height: 55px;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+      color: #4a5568;
+      box-shadow: 4px 4px 8px #a3b1c6, -4px -4px 8px #ffffff;
+      transition: all 0.1s;
+    }
+
+    /* Quando clica no botão, afunda */
+    .btn:active {
+      box-shadow: inset 3px 3px 6px #a3b1c6, inset -3px -3px 6px #ffffff;
+      transform: scale(0.97);
+    }
+
+    /* Botões de operação ficam roxos */
+    .btn.operacao {
+      color: #6c63ff;
+      font-size: 20px;
+    }
+
+    /* Botão igual tem fundo roxo */
+    .btn.igual {
+      background: #6c63ff;
+      color: white;
+    }
+
+    /* Botão limpar fica vermelho */
+    .btn.limpar {
+      color: #e74c3c;
+    }
+
+    /* Botões especiais (% e +/-) ficam roxos */
+    .btn.especial {
+      color: #6c63ff;
+    }
+
+    /* Botão zero ocupa 2 colunas */
+    .btn.zero {
+      grid-column: span 2;
+    }
+  </style>
+</head>
+<body>
+
+<div class="calculadora">
+
+  <!-- Tela da calculadora -->
+  <div class="tela">
+    <div class="conta" id="conta"></div>
+    <div class="numero" id="numero">0</div>
+  </div>
+
+  <!-- Botões -->
+  <div class="botoes">
+    <button class="btn limpar"   onclick="limpar()">AC</button>
+    <button class="btn especial" onclick="inverterSinal()">+/-</button>
+    <button class="btn especial" onclick="porcentagem()">%</button>
+    <button class="btn operacao" onclick="escolherOperacao('/')">÷</button>
+
+    <button class="btn" onclick="digitarNumero('7')">7</button>
+    <button class="btn" onclick="digitarNumero('8')">8</button>
+    <button class="btn" onclick="digitarNumero('9')">9</button>
+    <button class="btn operacao" onclick="escolherOperacao('*')">×</button>
+
+    <button class="btn" onclick="digitarNumero('4')">4</button>
+    <button class="btn" onclick="digitarNumero('5')">5</button>
+    <button class="btn" onclick="digitarNumero('6')">6</button>
+    <button class="btn operacao" onclick="escolherOperacao('-')">−</button>
+
+    <button class="btn" onclick="digitarNumero('1')">1</button>
+    <button class="btn" onclick="digitarNumero('2')">2</button>
+    <button class="btn" onclick="digitarNumero('3')">3</button>
+    <button class="btn operacao" onclick="escolherOperacao('+')">+</button>
+
+    <button class="btn zero"  onclick="digitarNumero('0')">0</button>
+    <button class="btn"       onclick="digitarPonto()">.</button>
+    <button class="btn igual" onclick="calcular()">=</button>
+  </div>
+
+</div>
+
+<script>
+  // Variáveis que guardam o estado da calculadora
+  var numeroAtual = '0';       // número que está aparecendo na tela
+  var numeroAnterior = null;   // número antes de apertar operação
+  var operacao = null;         // qual operação foi escolhida (+, -, *, /)
+  var deveResetar = false;     // controla se deve apagar e começar novo número
+  var simboloOp = '';          // símbolo visual da operação (÷, ×, etc.)
+
+  // Pega os elementos da tela
+  var telaPrincipal = document.getElementById('numero');
+  var telaConta = document.getElementById('conta');
+
+  // Atualiza o que aparece na tela
+  function atualizarTela() {
+    telaPrincipal.textContent = numeroAtual;
+  }
+
+  // Quando o usuário digita um número
+  function digitarNumero(n) {
+    if (deveResetar) {
+      numeroAtual = n;
+      deveResetar = false;
+    } else {
+      // Se já tem 12 dígitos, não deixa digitar mais
+      if (numeroAtual.length >= 12) return;
+      numeroAtual = numeroAtual === '0' ? n : numeroAtual + n;
+    }
+    atualizarTela();
+  }
+
+  // Quando aperta o ponto decimal
+  function digitarPonto() {
+    if (deveResetar) {
+      numeroAtual = '0.';
+      deveResetar = false;
+      atualizarTela();
+      return;
+    }
+    // Só adiciona ponto se ainda não tiver um
+    if (!numeroAtual.includes('.')) {
+      numeroAtual += '.';
+      atualizarTela();
+    }
+  }
+
+  // Quando escolhe uma operação (+, -, *, /)
+  function escolherOperacao(op) {
+    // Símbolos visuais para cada operação
+    var simbolos = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+
+    // Se já tinha uma conta em andamento, calcula primeiro
+    if (numeroAnterior !== null && !deveResetar) {
+      calcularParcial();
+    }
+
+    numeroAnterior = parseFloat(numeroAtual);
+    operacao = op;
+    simboloOp = simbolos[op];
+
+    // Mostra a conta pequena no topo da tela
+    telaConta.textContent = numeroAnterior + ' ' + simboloOp;
+    deveResetar = true;
+  }
+
+  // Faz o cálculo parcial (usado internamente)
+  function calcularParcial() {
+    if (numeroAnterior === null || operacao === null) return;
+
+    var a = numeroAnterior;
+    var b = parseFloat(numeroAtual);
+    var resultado;
+
+    if (operacao === '+') resultado = a + b;
+    else if (operacao === '-') resultado = a - b;
+    else if (operacao === '*') resultado = a * b;
+    else if (operacao === '/') {
+      resultado = b !== 0 ? a / b : 'Erro';
+    }
+
+    // Arredonda para evitar números estranhos tipo 0.1+0.2=0.30000000004
+    if (resultado !== 'Erro') {
+      resultado = parseFloat(resultado.toFixed(10));
+    }
+
+    numeroAtual = String(resultado);
+    atualizarTela();
+  }
+
+  // Quando aperta o = 
+  function calcular() {
+    if (numeroAnterior === null || operacao === null) return;
+
+    var b = parseFloat(numeroAtual);
+
+    // Mostra a conta completa na telinha
+    telaConta.textContent = numeroAnterior + ' ' + simboloOp + ' ' + b + ' =';
+
+    calcularParcial();
+
+    // Reseta para próxima conta
+    numeroAnterior = null;
+    operacao = null;
+    deveResetar = true;
+  }
+
+  // Botão AC: limpa tudo
+  function limpar() {
+    numeroAtual = '0';
+    numeroAnterior = null;
+    operacao = null;
+    deveResetar = false;
+    simboloOp = '';
+    telaConta.textContent = '';
+    atualizarTela();
+  }
+
+  // Botão +/-: inverte o sinal do número
+  function inverterSinal() {
+    numeroAtual = String(parseFloat(numeroAtual) * -1);
+    atualizarTela();
+  }
+
+  // Botão %: divide por 100
+  function porcentagem() {
+    numeroAtual = String(parseFloat(numeroAtual) / 100);
+    atualizarTela();
+  }
+</script>
+
+</body>
+</html>
